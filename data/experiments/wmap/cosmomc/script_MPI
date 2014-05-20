@@ -1,0 +1,17 @@
+#PBS -S /bin/bash
+#PBS -N cmb.lcdm.fulla
+#PBS -j oe
+#PBS -o /lustre/bbenson/chains/logs/cmb.lcdm.fulla.out
+#PBS -m n
+#PBS -l nodes=6:ppn=8,walltime=48:00:00,vmem=1300mb
+#PBS -q normal
+cd ${PBS_O_WORKDIR}
+
+# print identifying info for this job
+echo "Job ${PBS_JOBNAME} submitted from ${PBS_O_HOST} started `date` jobid ${PBS_JOBID}"
+
+#export OMP_NUM_THREADS=8
+
+application=${PBS_O_WORKDIR}/cosmomc
+/usr/local/mpich2-intel/bin/mpiexec -v -pernode $application /home/bbenson/paramfits/cosmomc.lps12_wmap9/params.cmb.lcdm.fulla.ini
+
