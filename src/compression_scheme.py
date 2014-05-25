@@ -14,12 +14,12 @@ class compression_scheme(dict):
 		try:
 			self.dcldphi
 		except:
-			self.dcldphi = np.identity(5001)
+			self.dcldphi = np.identity(2501)
 
 		try:
 			self.noise_cov
 		except:
-			self.noise_cov = np.identity(5001)
+			self.noise_cov = np.identity(2501)
 		try:
 			self.supermodel_cov
 		except:
@@ -28,7 +28,7 @@ class compression_scheme(dict):
 		try:
 			self.SM_cov
 		except:
-			self.SM_cov = np.identity(5001)
+			self.SM_cov = np.identity(2501)
 
 		try:
 			self.kappa
@@ -44,4 +44,4 @@ class compression_scheme(dict):
 	def get_compression_modes(self):
 		self.eigspectrum, self.modes = compute.get_modes(self)
 
-		self.modes = self.modes[:nummodes]
+		self.modes = self.modes[:,:self.nummodes]

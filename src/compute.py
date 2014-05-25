@@ -18,13 +18,13 @@ def calc_dcldphi(model):
 
 	### Load the fiducial model and fiducial parameters, if they exist.
 	fiducial_params = model.fiducial_params
-	fiducial_cl = model.fiducial_cl
+	fiducial_cl = model.fiducial_cl[:2501]
 	observables = classy.Class()
-	ell = np.arange(5001)
+	ell = np.arange(2501)
 
 	if 'lcdm' == model.model:
 		parameter_shifts = {'A_s':5.0e-10, 'n_s':0.005, 'tau_reio':0.005, 'omega_b':0.00001, 'omega_cdm':0.0001, 'H0':2}
-		dcldphi = np.zeros([5001, len(parameter_shifts)])
+		dcldphi = np.zeros([2501, len(parameter_shifts)])
 		for i, param in enumerate(parameter_shifts.keys()):
 			observables.set(**fiducial_params)
 			observables.set(**{param:parameter_shifts[param] + fiducial_params[param]})
@@ -34,16 +34,16 @@ def calc_dcldphi(model):
 			except:
 				raise Exception('Critical Error: unable to compute spectra--likely bad parameters in fiducial model.  See class error.')
 			try: 
-				cl = observables.lensed_cl(lmax = 5000)['tt']
+				cl = observables.lensed_cl(lmax = 5000)['tt'][:2501]
 			except:
 				raise Exception('Critical Error:  power spectrum not defined out to ell = 5000--likely bad parameter in fiducial model.  See class error.')
 
-			dcldphi[:,i] =  (cl * ell * (ell + 1)/(2 * pi) * (2.73 * 1.0e6)**2 - fiducial_cl)#/parameter_shifts[param]
+			dcldphi[:,i] =  (cl * ell * (ell + 1)/(2 * pi) * (2.73 * 1.0e6)**2 - fiducial_cl)/parameter_shifts[param]
 			observables.cleanup()
 
 	if 'primordial' == model.model:
 		perturbation_locations = np.arange(-8, 2, 0.05)
-		dcldphi = np.zeros([5001, perturbation_locations.size])
+		dcldphi = np.zeros([2501, perturbation_locations.size])
 		for i, lnk in enumerate(perturbation_locations):
 			observables.set(**fiducial_params)
 			observables.set(perturb_loc = lnk)
@@ -72,7 +72,7 @@ def calc_dcldphi(model):
 			'N_ur':3.146,
 			'N_ncdm':1
 			}
-		dcldphi = np.zeros([5001, len(parameter_shifts)])
+		dcldphi = np.zeros([2501, len(parameter_shifts)])
 		for i, param in enumerate(parameter_shifts.keys()):
 			observables.set(**fiducial_params)
 			dphi = parameter_shifts[param]
@@ -123,7 +123,7 @@ def calc_covariance(data):
 		
 
 	if data.experiment == 'wmap':
-		fidcl = data.fiducial_cl
+		fidcl = data.fiducial_cl[:2501]
 		ondiag = fileroot + 'wmap_likelihood_inputs_tt.p4v6.wmap9.kq85.cinv_v3.dat'
 		offdiag = fileroot + 'wmap_likelihood_inputs_tt_offdiag.p4v4.wmap9.kq85.cinv_v3.dat'
 
@@ -136,16 +136,16 @@ def calc_covariance(data):
 		Epsilon_temp = offdiag[:,2].reshape([1199, 599])
 		R_eff_temp = offdiag[:,3].reshape([1199, 599])
 
-		R_eff = diag(zeros(5001))
+		R_eff = diag(zeros(2501))
 		R_eff[l1, l2] = R_eff_temp
 		R_eff[l2, l1] = R_eff_temp
 
 
-		Epsilon = diag(zeros(5001))
+		Epsilon = diag(zeros(2501))
 		Epsilon[l1, l2] = Epsilon_temp
 		Epsilon[l2, l1] = Epsilon_temp
 
-		tttt = zeros(5001) +1.0e-30 ## Add small epsilon here to kill numerical instabilities near zero 
+		tttt = zeros(2501) +1.0e-30 ## Add small epsilon here to kill numerical instabilities near zero 
 		tttt[ell] = 2 * (fidCl[ell] + Nl)**2/(2*ell + 1)/Fsky**2
 
 		tttt = numpy.outer(sqrt(tttt), sqrt(tttt))
@@ -156,10 +156,10 @@ def calc_covariance(data):
 
 
 	if data.experiment == 'planck_like':
-		ell = np.arange(5001)
+		ell = np.arange(2501)
 		Fsky = 0.3
 		Nl  = 0.00015048 * np.exp(ell**2 * 7.69112e-7 ) * (ell**2) / 2.0 / np.pi
-		covariance = 2 * (data.fiducial_cl + Nl)**2/(2*ell + 1)/Fsky**2
+		covariance = 2 * (data.fiducial_cl[:2501] + Nl)**2/(2*ell + 1)/Fsky**2
 		covariance = np.diag(covariance)
 	return covariance
 
@@ -175,16 +175,16 @@ def load_window_functions(data):
 		windows = [np.loadtxt(fileroot + 'windows/window_%i'%i) for i in range(1,48)]
 		ell = np.array(windows)[0,:,0].astype('int')
 		weights = np.array(windows)[:,:,1]
-		windows = np.zeros([47,5001])
+		windows = np.zeros([47,2501])
 		windows[:, ell] = weights
 
 	if data.experiment == 'wmap':
 
-		windows = np.identity(5001)
+		windows = np.identity(2501)
 
 	if data.experiment == 'planck_like':
 
-		windows = np.identity(5001)
+		windows = np.identity(2501)
 
 	return windows
 
@@ -203,7 +203,7 @@ def get_bandpowers(data):
 
 	if data.experiment == 'planck_like':
 
-		bandpowers = data.fiducial_cl + normal(np.zeros(data.covariance.shape[0]), data.covariance)
+		bandpowers = data.fiducial_cl[:2501] + normal(np.zeros(data.covariance.shape[0]), data.covariance)
 
 	return bandpowers
 
@@ -211,16 +211,23 @@ def get_bandpowers(data):
 def get_modes(test):
 
 	if test.type == 'max_cov':
-		w, modes = eig(np.dot(inv(test.noise_cov[2:,2:]) + test.kappa * test.SM_cov[2:,2:], test.supermodel_cov[2:,2:]))
+		test_matrix = np.dot(inv(test.noise_cov[2:,2:] + test.kappa * test.SM_cov[2:,2:]), test.supermodel_cov[2:,2:])
+		w, modes = eig(test_matrix)
 	
 	if test.type == 'fisher':
 		w, modes = eig(np.dot(test.modes[2:,:].T, dot(inv(test.noise_cov[2:,2:]) + test.kappa + test.SM_cov[2:,2:], test.modes[2:,:])))
 
-	padded_modes = np.zeros(5001, 5001)
-	for i in arange(modes.shape[1])
-		padded_modes[2:,i] = modes[:,i] 
+	padded_modes = np.zeros([2501, 2499])
+	for i in np.arange((np.real(modes).shape)[0]):
+		padded_modes[2:,i] = np.real(modes[:,i])
 
-	return np.real(w), np.real() 
+	##Make sure they're sorted
+	#ii = np.argsort(w)
+	#w = w[ii]
+	#w = w[::-1]
+	#padded_modes = modes[:,ii]
+	#padded_modes = modes[:,::-1]
+	return np.real(w), np.real(padded_modes) 
 
 	
 #def get_measured_amps(test):
