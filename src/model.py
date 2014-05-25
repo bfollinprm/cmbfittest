@@ -27,7 +27,7 @@ class model(dict):
 
 		try:
 			fiducial_model = numpy.load(filename)
-			self.fiducial_cl = fiducial_model['cl_TT']
+			self.fiducial_cl = fiducial_model['cl_TT'][:2501]
 			self.fiducial_params = fiducial_model['params'].item()
 		except:
 			raise Exception('Critical Error: No fiducial model found, or fiducial model in incorrect format.  Need file %s to contain dictionary with keys cl_TT and params'%filename)
