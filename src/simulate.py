@@ -2,7 +2,7 @@ import numpy as np
 import os.path as osp
 
 from numpy.random import normal
-
+from numpy.linalg import inv
 from cosmoslik import param_shortcut, get_plugin, SlikDict, SlikPlugin, Slik
 
 from scipy.optimize import minimize
@@ -94,7 +94,8 @@ class gauss_approx(SlikPlugin):
             self.covariance 
         except:
             self.covariance = np.zeros(2501)
-
+	self.inv_cov = np.zeros([2501,2501])
+	self.inv_cov[2:2501,2:2501] = inv(self.covariance[2:2501, 2:2501])
         try:
             self.windows
         except:
@@ -103,13 +104,13 @@ class gauss_approx(SlikPlugin):
         try:
             self.cosmo
         except:
-            self.cosmo = dict(
+            self.cosmo =  get_plugin('models.cosmology')(
                 logA = 3.2,
                 ns = 0.96,
                 ombh2 = 0.0221,
                 omch2 = 0.12,
                 tau = 0.09,
-                H0 = 70,
+                theta = 0.0104,
                 omnuh2 = 0.000645
                     )
 
@@ -118,19 +119,20 @@ class gauss_approx(SlikPlugin):
             datafile=fileroot + '/data/pico3_tailmonty_v33.dat'
         )
 
-        #self.bbn = get_plugin('models.bbn_consistency')()
-        #self.hubble_theta = get_plugin('models.hubble_theta')() 
+        self.bbn = get_plugin('models.bbn_consistency')()
+        self.hubble_theta = get_plugin('models.hubble_theta')() 
 
     def lnl(self, x):
-        cosmo = self.x_to_cosmo(x)
-        self.cosmo = cosmo
-        cosmo['Yp'] = .25#self.bbn(**cosmo)
-        #cosmo['H0'] = 70#self.hubble_theta.theta_to_hubble(**cosmo)
-
-        cl_TT = self.get_cmb(outputs=['cl_TT'],force=True,**cosmo)['cl_TT'][:2501]
+        self.x_to_cosmo(x)
+        self.cosmo['Yp'] = self.bbn(**self.cosmo)
+        self.cosmo['H0'] = self.hubble_theta.theta_to_hubble(**self.cosmo)
+        self.cosmo.As = np.exp(self.cosmo.logA)*1e-10
+        cl_TT = self.get_cmb(outputs=['cl_TT'],force=True,**self.cosmo)['cl_TT'][:2501]
         lnl = self.tau_prior()
         dx = np.dot(self.windows, cl_TT) - self.observation
-        lnl += np.dot(dx, np.dot(self.covariance, dx))
+        lnl += np.dot(dx[2:2501], np.dot(self.inv_cov[2:2501,2:2501], dx[2:2501]))
+#	print lnl
+
         return lnl
 
     def tau_prior(self):
@@ -138,31 +140,30 @@ class gauss_approx(SlikPlugin):
         return np.dot(dx,dx)/0.0125**2
 
     def x_to_cosmo(self,x):
-        cosmo = {}
-        cosmo['logA'] = x[0]
-        cosmo['ns'] = x[1]
-        cosmo['ombh2'] = x[2]
-        cosmo['omch2'] = x[3]
-        cosmo['tau'] = x[4]
-        cosmo['theta'] = x[5]
-        cosmo['omnuh2'] = x[6]
-        return cosmo
+        self.cosmo['logA'] = x[0]
+        self.cosmo['ns'] = x[1]
+        self.cosmo['ombh2'] = x[2]
+        self.cosmo['omch2'] = x[3]
+        self.cosmo['tau'] = x[4]
+        self.cosmo['theta'] = x[5]
+        self.cosmo['omnuh2'] = x[6]
 
     def cosmo_to_x(self):
         x = np.zeros(7)
         x[0] = self.cosmo['logA']
         x[1] = self.cosmo['ns'] 
         x[2] = self.cosmo['ombh2'] 
-        x[3] = self.cosmo['omch2'] 2
+        x[3] = self.cosmo['omch2']
         x[4] = self.cosmo['tau'] 
-        x[5] = self.cosmo['H0']
+        x[5] = self.cosmo['theta']
         x[6] = self.cosmo['omnuh2']    
         return x  
 
     def get_bestfit(self):
         x0 = self.cosmo_to_x()
-        minresult = minimize(self.lnl, x0, method = 'BFGS')
+        minresult = minimize(self.lnl, x0, method = 'Nelder-Mead')
         x_bestfit = minresult.x
-        self.best_fit = self.get_cmb(outputs=['cl_TT'], force = True, **self.x_to_cosmo(x_bestfit))['cl_TT'][:2501]
+	self.x_to_cosmo(x_bestfit)
+        self.best_fit = self.get_cmb(outputs=['cl_TT'], force = True, **self.cosmo)['cl_TT'][:2501]
 
 
