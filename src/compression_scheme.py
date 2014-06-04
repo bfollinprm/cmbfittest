@@ -23,7 +23,7 @@ class compression_scheme(dict):
 		try:
 			self.supermodel_cov
 		except:
-			self.supermodel_cov = np.outer(self.dcldphi, self.dcldphi)
+			self.supermodel_cov = np.dot(self.dcldphi.T, self.dcldphi)
 
 		try:
 			self.SM_cov
@@ -45,3 +45,14 @@ class compression_scheme(dict):
 		self.eigspectrum, self.modes = compute.get_modes(self)
 
 		self.modes = self.modes[:,:self.nummodes]
+
+
+	def save_modes(self):
+		root, extension =  osp.split(osp.dirname(osp.abspath(__file__)))
+		filename = root + '/data/compression_modes/%s_modes.npy'%self.type
+
+		try:
+			numpy.save(filename, self.modes)
+		except:
+			self.dcldphi = self.get_compression_modes()
+			numpy.save(filename, self.modes)
