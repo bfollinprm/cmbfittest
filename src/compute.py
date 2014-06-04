@@ -159,7 +159,7 @@ def calc_covariance(data):
 		ell = np.arange(2501)
 		Fsky = 0.3
 		Nl  = 0.00015048 * np.exp(ell**2 * 7.69112e-7 ) * (ell**2) / 2.0 / np.pi
-		covariance = 2 * (data.fiducial_cl[:2501] + Nl)**2/(2*ell + 1)/Fsky**2
+		covariance = 2 * (data.fiducial_cl[:2501] + Nl)**2/(2*ell + 1)/Fsky
 		covariance = np.diag(covariance)
 	return covariance
 
@@ -215,7 +215,7 @@ def get_modes(test):
 		w, modes = eig(test_matrix)
 	
 	if test.type == 'fisher':
-		w, modes = eig(np.dot(test.modes[2:,:].T, dot(inv(test.noise_cov[2:,2:]) + test.kappa + test.SM_cov[2:,2:], test.modes[2:,:])))
+		w, modes = eig(np.dot(test.modes[2:,:].T, np.dot(inv(test.noise_cov[2:,2:]) + test.kappa + test.SM_cov[2:,2:], test.modes[2:,:])))
 
 	padded_modes = np.zeros([2501, 2499])
 	for i in np.arange((np.real(modes).shape)[0]):

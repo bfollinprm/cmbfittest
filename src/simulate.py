@@ -1,7 +1,7 @@
 import numpy as np
 import os.path as osp
 
-from numpy.random import normal
+from numpy.random import multivariate_normal as normal
 from numpy.linalg import inv
 from cosmoslik import param_shortcut, get_plugin, SlikDict, SlikPlugin, Slik
 
@@ -113,6 +113,11 @@ class gauss_approx(SlikPlugin):
                 theta = 0.0104,
                 omnuh2 = 0.000645
                     )
+        try:
+            self.deltaCl
+        except:
+            self.deltaCl = np.identity(2501)
+
 
         fileroot, extension =  osp.split(osp.dirname(osp.abspath(__file__)))
         self.get_cmb = get_plugin('models.pico')(
@@ -166,4 +171,7 @@ class gauss_approx(SlikPlugin):
 	self.x_to_cosmo(x_bestfit)
         self.best_fit = self.get_cmb(outputs=['cl_TT'], force = True, **self.cosmo)['cl_TT'][:2501]
 
+    def sample(self):
+        covariance = inv(np.dot(self.deltaCl.T, np.dot(self.inv_cov, self.deltaCl)))
+        return self.best_fit + np.dot(self.deltaCl, normal(np.zeros(6), covariance))
 
