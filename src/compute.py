@@ -210,11 +210,11 @@ def get_bandpowers(data):
 
 def get_modes(test):
 
-	if test.type == 'max_cov':
+	if test.type in ['LDA', 'PCA', 'S_NL', 'S_N']:
 		test_matrix = np.dot(inv(test.noise_cov[2:,2:] + test.kappa * test.SM_cov[2:,2:]), test.supermodel_cov[2:,2:])
 		w, modes = eig(test_matrix)
 	
-	if test.type == 'fisher':
+	if test.type in ['fisher', 'FN', 'FNL']:
 		w, modes = eig(np.dot(test.modes[2:,:].T, np.dot(inv(test.noise_cov[2:,2:]) + test.kappa + test.SM_cov[2:,2:], test.modes[2:,:])))
 
 	padded_modes = np.zeros([2501, 2499])
