@@ -110,7 +110,7 @@ class gauss_approx(SlikPlugin):
                 ombh2 = 0.0221,
                 omch2 = 0.12,
                 tau = 0.09,
-                theta = 0.0104,
+                theta = 0.01046,
                 omnuh2 = 0.000645
                     )
         try:
@@ -125,12 +125,12 @@ class gauss_approx(SlikPlugin):
         )
 
         self.bbn = get_plugin('models.bbn_consistency')()
-        self.hubble_theta = get_plugin('models.hubble_theta')() 
+        #self.hubble_theta = get_plugin('models.hubble_theta')() 
 
     def lnl(self, x):
         self.x_to_cosmo(x)
         self.cosmo['Yp'] = self.bbn(**self.cosmo)
-        self.cosmo['H0'] = self.hubble_theta.theta_to_hubble(**self.cosmo)
+        #self.cosmo['H0'] = self.hubble_theta.theta_to_hubble(**self.cosmo)
         self.cosmo.As = np.exp(self.cosmo.logA)*1e-10
         cl_TT = self.get_cmb(outputs=['cl_TT'],force=True,**self.cosmo)['cl_TT'][:2501]
         lnl = self.tau_prior()
@@ -167,8 +167,6 @@ class gauss_approx(SlikPlugin):
     def get_bestfit(self):
         x0 = self.cosmo_to_x()
         minresult = minimize(self.lnl, x0, method = 'Nelder-Mead')
-        x_bestfit = minresult.x
-	self.x_to_cosmo(x_bestfit)
         self.best_fit = self.get_cmb(outputs=['cl_TT'], force = True, **self.cosmo)['cl_TT'][:2501]
 
     def sample(self):

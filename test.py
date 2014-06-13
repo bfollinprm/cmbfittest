@@ -1,210 +1,153 @@
-# -*- coding: utf-8 -*-
-# <nbformat>3.0</nbformat>
+import cmbfittest as fit
+#import numba
 
-# <codecell>
 
-import model
+from scipy.ndimage.filters import gaussian_filter1d as gaussian_filter
+from numpy.random import multivariate_normal as normal
+from numpy.random import normal as N
+from numpy import dot, sqrt, zeros, array, arange, save, mean, std
+from numpy.linalg import inv, eigh
+from scipy.linalg import sqrtm
 
-# <codecell>
 
-primordial = model.model('primordial')
-lcdm = model.model('lcdm')
+##Instance model structures for linearized LCDM and primordial perturbations
+print 'instancing models'
+primordial = fit.model.model('primordial')
+lcdm = fit.model.model('lcdm')
 
-# <codecell>
 
+##Instance experimental noise model
+experiment = fit.data.data('planck_like')
+experiment.get_covariance()
+
+##Calculate or load linear responses to model parameters
 primordial.get_dcldphi()
 lcdm.get_dcldphi()
 
-# <codecell>
 
+###We don't care about ell > 2500, truncate for speed-up
 primordial.dcldphi = primordial.dcldphi[:2501,:]
 lcdm.dcldphi = lcdm.dcldphi[:2501,:]
 
-# <codecell>
 
-from scipy.ndimage.filters import gaussian_filter1d as gaussian_filter
+###Numerics mean the responses in Cl space to perturbations are rocky; smooth them out
+lcdm.dcldphi = gaussian_filter(lcdm.dcldphi, sigma = 20, axis = 0)
+primordial.dcldphi= gaussian_filter(primordial.dcldphi, sigma = 20, axis = 0)
 
-# <codecell>
 
-lcdm.dcldphi_smooth = gaussian_filter(lcdm.dcldphi, sigma = 20, axis = 0)
-primordial.dcldphi_smooth = gaussian_filter(primordial.dcldphi, sigma = 20, axis = 0)
-
-# <codecell>
-
-plot(primordial.dcldphi_smooth);
-primordial.save_dcldphi()
-lcdm.save_dcldphi() 
-#.dcldphi / dot(lcdm.dcldphi, lcdm.dcldphi).reshape(-1,1)
-
-# <codecell>
-
+###One choice of prior for LCDM modes--everything has the same weight
+print '\t ...setting priors'
+unit_lcdm = fit.model.model('lcdm')
 row_sums = sqrt((lcdm.dcldphi**2).sum(axis = 0))
-lcdm.dcldphi = lcdm.dcldphi /row_sums
-plot(lcdm.dcldphi);
+unit_lcdm.dcldphi = lcdm.dcldphi/row_sums
 
-# <codecell>
 
+###Another choice of prior--LCDM variation looks as much like noise as possible (Fisher prior)
+fisher_lcdm = fit.model.model('lcdm')
+parameter_prior_cov = dot(lcdm.dcldphi[2:,:].T, dot(inv(experiment.covariance[2:2501,2:2501]), lcdm.dcldphi[2:,:]))
+fisher_lcdm.dcldphi = lcdm.dcldphi
+fisher_lcdm.dcldphi = dot(lcdm.dcldphi[2:,:], dot(parameter_prior_cov, lcdm.dcldphi[2:,:].T))
+
+
+
+###Get the covariance
+print '\t ...calculating covariances'
 primordial.get_covariance()
 lcdm.get_covariance()
+unit_lcdm.get_covariance()
+fisher_lcdm.get_covariance()
 
-# <codecell>
-
-imshow(lcdm.covariance)
-colorbar()
-import data
-
-# <codecell>
-
-experiment = data.data('planck_like')
-
-# <codecell>
-
-experiment.get_covariance()
-
-# <codecell>
-
-import compression_scheme
-
-# <codecell>
-
-lda = compression_scheme.compression_scheme(
-                                            'LDA', 
-                                            dcldphi = primordial.dcldphi_smooth, 
-                                            noise_cov = experiment.covariance, 
-                                            supermodel_cov = primordial.covariance 
-                                            #kappa = 1.0e10, 
-                                            #SM_cov = lcdm.covariance
-                                            )
-
-# <codecell>
-
-lda.get_compression_modes()
-
-# <codecell>
-
-plot(lda.modes[5:,19]);
-
-# <codecell>
-
-import simulate
-from numpy.random import multivariate_normal as normal
-#observation = experiment.fiducial_cl[:2501] + normal(np.zeros(2501), experiment.covariance[:2501,:2501])
-
-# <codecell>
-
-clobs = loadtxt('../clobs.csv', delimiter = ',')
-#plot(clobs[:,2:])
-observation = experiment.fiducial_cl[:2501].copy()
-observation += normal(np.zeros(2501), experiment.covariance[:2501,:2501])
-observation2 = experiment.fiducial_cl[:2501].copy()
-observation2[clobs[:,0].astype('int')] = clobs[:,4]
-plot(observation)
-
-# <codecell>
-
-cloud = simulate.gauss_approx(observation = observation, 
-                              covariance = experiment.covariance, 
-                              deltaCl = lcdm.dcldphi_smooth)
-
-# <codecell>
-
-cloud.get_bestfit()
-plot(cloud.best_fit - experiment.fiducial_cl[:2501])
-ylim(-100,100)
-
-# <codecell>
-
-plot(cloud.best_fit)
-plot(experiment.fiducial_cl[:2501], alpha = 1)
-plot(cloud.observation, alpha = 0.3, color = 'k')
-
-
-# <codecell>
-
-x = array([cloud.sample() for i in arange(10000)])
-x.shape
-
-# <codecell>
-
-#plot(x.T, color = 'b', alpha = .3);
-#plot(cloud.observation, color = 'k', alpha = 0.3);
-#ylim(1,1e4);
-
-# <codecell>
-
-#plot(array([x[i,:]/cloud.best_fit for i in arange(10000)]).T, color = 'b', alpha = 0.3);
-#plot(cloud.observation/cloud.best_fit, color = 'k', alpha = 0.3);
-#ylim(0,2);
-
-# <codecell>
-
-#lda.modes.shape
-#x.shape
-sigma2 = diag(cloud.covariance)
-sigma2[0] = 1
-xwithnoise = array([x[j,:] + array([random.normal(scale = sqrt(sigma2[i])) for i in arange(0,2501)]) for j in arange(10000)])
-
-# <codecell>
-
-cloud.amps = dot(lda.modes.T, xwithnoise.T)
-#cloud.amps.shape
-
-# <codecell>
-
-observed_amp = dot(lda.modes.T, cloud.observation)
-#observed_amp.shape
-
-# <codecell>
-
-from scipy.linalg import sqrtm
-means = mean(cloud.amps, axis = 1)
-covariance = cov(cloud.amps)
-covariance.shape
-
-# <codecell>
-
-z = dot(sqrtm(covariance), observed_amp)
-zcloud = dot(sqrtm((covariance)), cloud.amps)
-zcloud.shape
-
-# <codecell>
-
-
-# <codecell>
-
-klist = [randint(0,10000) for i in arange(1000)]
-distance = [dot((observed_amp[:i] - means[:i]).T, dot(inv(covariance[:i,:i]), (observed_amp[:i] - means[:i]).T)) for i in arange(1,observed_amp.size)]
-test_distances = [[dot((cloud.amps[:i,k] - means[:i]).T, dot(inv(covariance[:i,:i]), (cloud.amps[:i,k] - means[:i]).T)) for i in arange(1,observed_amp.size)] for k in klist]
-
-# <codecell>
-
-dis = [(observed_amp[i] - means[i])**2/diag(covariance)[i] for i in arange(1, observed_amp.size)]
-test_dis = [[(cloud.amps[i,k] - means[i])**2/diag(covariance)[i] for i in arange(1, observed_amp.size)] for k in arange(1000)]
-average = mean(array(test_dis), axis = 0)
-sigma = std(array(test_dis),axis = 0)
-
-#errorbar(arange(29), average, yerr= sigma)
-plot(array([zip(arange(29), array(test_dis)[k,:]) for k in arange(1000)])[:,:,0].T, array([zip(arange(29), array(test_dis)[k,:]) for k in arange(1000)])[:,:,1].T, 
-     color = 'k', alpha = 0.01);
-scatter(arange(29), dis, color = 'red')
-ylim(0,10)
+##Instance a compression scheme
+print 'instancing compression scheme'
+S_N = fit.scheme.compression_scheme(
+                                    'LDA', 
+                                    dcldphi = primordial.dcldphi, 
+                                    noise_cov = experiment.covariance, 
+                                    supermodel_cov = primordial.covariance,
+                                    #kappa = 1.0e10, 
+                                    #SM_cov = lcdm.covariance,
+                                    nummodes = 30
+                                    )
+print '\t ...calculating modes'
+S_N.get_compression_modes()
 
 
 
-# <codecell>
+n = 30
+chisqlist = zeros(n)
+maxchisqlist = zeros(n)
+globalz = zeros(n)
+maxz = zeros(n)
+for ii in arange(n):
+
+    observation = experiment.fiducial_cl[:2501].copy()
+    observation += normal(zeros(2501), experiment.covariance[:2501,:2501])
+
+    print 'simulating spectra %i'%ii
+    cloud = fit.sim.gauss_approx(observation = observation, 
+                                  covariance = experiment.covariance, 
+                                  deltaCl = lcdm.dcldphi)
+    print '\t ...finding best fit'
+    cloud.get_bestfit()
 
 
-# <codecell>
+    ##And sample the theory modes
+    print '\t ...sampling'
+    draws = array([cloud.sample() for i in arange(10000)])
 
-plot(array([dot(lda.modes, cloud.amps[:,i]) - dot(lda.modes, observed_amp) for i in arange(10000)]).T, color = 'k', alpha = .01);
-#plot(dot(lda.modes, observed_amp))
-ylabel(r'$C_l^{cloud}  - C_l^{observed}$--with noise', fontsize = 20);
-title('S_N projected power; no exotic perturbations');
 
-# <codecell>
+    ##And add noise (diagonalize noise model first and this goes MUCH faster).
 
-semilogy(lda.eigspectrum[:30]/max(lda.eigspectrum))
+    variance, orthogonal_modes = eigh(experiment.covariance[:2501,:2501])
+    sigma = sqrt(variance)
 
-# <codecell>
+    print '\t ...adding noise'
+
+
+    #@jit
+    def randN(scale = 0):
+        if scale == 0:
+          return 0
+        else:
+          return N(scale = scale)
+
+    def add_noise(spectrum, sigma, orthogonal_modes):
+      return spectrum + dot(orthogonal_modes, array([randN(scale = sigma[j]) for j in arange(2501)]))
+
+    noisydraws = array(map(lambda x:add_noise(x, sigma, orthogonal_modes), draws.tolist()))
+
+    ###Turn the draws and observation into test amplitudes.
+
+    print 'calculating test statistics'
+
+    cloud_amps, observed_amps = fit.test.get_amplitudes(noisydraws, cloud.observation, S_N.modes)
+
+
+    chisq, zscore = fit.test.global_statistic(cloud_amps, observed_amps)
+    chisqlist[ii] = chisq
+    globalz[ii] = zscore
+    print '\t ...reduced chi2 is %g'%chisq
+    print '\t \t for a z-score of %g'%zscore
+
+    maxchisq, zscore = fit.test.max_statistic(cloud_amps, observed_amps)
+    maxchisqlist[ii] = maxchisq
+    maxz[ii] = zscore
+    print '\t ...max statistic is %g'%maxchisq
+    print '\t \t for a z-score of %g'%zscore
+
+
+expectation = mean(globalz)
+error = std(globalz)
+print 'Global zscore:  %g'%expectation, ' \pm %g'%error
+
+expectation = mean(maxz)
+error = std(maxz)
+print 'Max zscore:  %g'%expectation,  ' \pm %g'%error
+
+
+save('maxchisq', maxchisqlist)
+save('chisq', chisqlist)
+save('globalz', globalz)
+save('maxz', maxz)
 
 
