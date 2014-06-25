@@ -215,7 +215,8 @@ def get_modes(test):
 		w, modes = eig(test_matrix)
 	
 	if test.type in ['fisher', 'FN', 'FNL']:
-		w, modes = eig(np.dot(test.modes[2:,:].T, np.dot(inv(test.noise_cov[2:,2:]) + test.kappa + test.SM_cov[2:,2:], test.modes[2:,:])))
+		test_matrix = np.dot(inv(test.noise_cov[2:,2:]) + test.kappa + test.SM_cov[2:,2:])
+		w, modes = eig(test_matrix)
 
 	padded_modes = np.zeros([2501, 2499])
 	for i in np.arange((np.real(modes).shape)[0]):

@@ -1,4 +1,5 @@
 import cmbfittest as fit
+from pylab import *
 #import numba
 
 
@@ -44,9 +45,9 @@ unit_lcdm.dcldphi = lcdm.dcldphi/row_sums
 
 ###Another choice of prior--LCDM variation looks as much like noise as possible (Fisher prior)
 fisher_lcdm = fit.model.model('lcdm')
-parameter_prior_cov = dot(lcdm.dcldphi[2:,:].T, dot(inv(experiment.covariance[2:2501,2:2501]), lcdm.dcldphi[2:,:]))
-fisher_lcdm.dcldphi = lcdm.dcldphi
-fisher_lcdm.dcldphi = dot(lcdm.dcldphi[2:,:], dot(parameter_prior_cov, lcdm.dcldphi[2:,:].T))
+parameter_prior_cov = inv(dot(lcdm.dcldphi[2:,:].T, dot(inv(experiment.covariance[2:2501,2:2501]), lcdm.dcldphi[2:,:])))
+fisher_lcdm.dcldphi = dot(lcdm.dcldphi, parameter_prior_cov)
+
 
 
 
@@ -60,17 +61,20 @@ fisher_lcdm.get_covariance()
 ##Instance a compression scheme
 print 'instancing compression scheme'
 S_N = fit.scheme.compression_scheme(
-                                    'LDA', 
+                                    'fisher', 
                                     dcldphi = primordial.dcldphi, 
                                     noise_cov = experiment.covariance, 
-                                    supermodel_cov = primordial.covariance,
-                                    #kappa = 1.0e10, 
-                                    #SM_cov = lcdm.covariance,
-                                    nummodes = 30
+                                    #supermodel_cov = primordial.covariance,
+                                    #kappa = 1000, 
+                                    #SM_cov = fisher_lcdm.covariance,
+                                    nummodes = 20
                                     )
 print '\t ...calculating modes'
 S_N.get_compression_modes()
 
+
+plot(S_N.modes[:,:5])
+show()
 
 
 n = 30
