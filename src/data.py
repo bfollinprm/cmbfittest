@@ -12,6 +12,11 @@ class data(dict):
 		self.__dict__ = self
 		self.experiment = experiment
 
+		try: 
+			self.ellmax
+		except:
+			self.ellmax = 2500
+
 	def get_covariance(self):
 		root, extension =  osp.split(osp.dirname(osp.abspath(__file__)))
 		filename = root + '/data/cl_fid.npz'
@@ -34,5 +39,3 @@ class data(dict):
 		except:
 
 			self.observation = compute.get_bandpowers(self)
-
-

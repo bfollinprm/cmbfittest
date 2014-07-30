@@ -67,7 +67,7 @@ from scipy.optimize import minimize
 #         self.cosmo.H0 = self.hubble_theta.theta_to_hubble(**self.cosmo)
         
 #         self.cmb_result = self.get_cmb(outputs=['cl_TT'],force=True,**self.cosmo)
-#         self.cl_TT = {'cl_TT':self.cmb_result['cl_TT'][0:2501]}
+#         self.cl_TT = {'cl_TT':self.cmb_result['cl_TT'][0:self.ellmax + 1]}
 
 #         lnl = self.priors(self)
 
@@ -84,22 +84,26 @@ class gauss_approx(SlikPlugin):
         super(SlikPlugin, self).__init__(*args, **kwargs)
         self.__dict__=self
 
+        try:
+            self.ellmax 
+        except:
+            self.ellmax = 2500
 
         try:
             self.observation 
         except:
-            self.observation = np.zeros(2501)
+            self.observation = np.zeros(self.ellmax + 1)
 
         try:
             self.covariance 
         except:
-            self.covariance = np.zeros(2501)
-	self.inv_cov = np.zeros([2501,2501])
-	self.inv_cov[2:2501,2:2501] = inv(self.covariance[2:2501, 2:2501])
+            self.covariance = np.zeros(self.ellmax + 1)
+	self.inv_cov = np.zeros([self.ellmax + 1,self.ellmax + 1])
+	self.inv_cov[2:self.ellmax + 1,2:self.ellmax + 1] = inv(self.covariance[2:self.ellmax + 1, 2:self.ellmax + 1])
         try:
             self.windows
         except:
-            self.windows = np.identity(2501)
+            self.windows = np.identity(self.ellmax + 1)
 
         try:
             self.cosmo
@@ -116,7 +120,8 @@ class gauss_approx(SlikPlugin):
         try:
             self.deltaCl
         except:
-            self.deltaCl = np.identity(2501)
+            self.deltaCl = np.identity(self.ellmax + 1)
+
 
 
         fileroot, extension =  osp.split(osp.dirname(osp.abspath(__file__)))
@@ -132,10 +137,10 @@ class gauss_approx(SlikPlugin):
         self.cosmo['Yp'] = self.bbn(**self.cosmo)
         #self.cosmo['H0'] = self.hubble_theta.theta_to_hubble(**self.cosmo)
         self.cosmo.As = np.exp(self.cosmo.logA)*1e-10
-        cl_TT = self.get_cmb(outputs=['cl_TT'],force=True,**self.cosmo)['cl_TT'][:2501]
+        cl_TT = self.get_cmb(outputs=['cl_TT'],force=True,**self.cosmo)['cl_TT'][:self.ellmax + 1]
         lnl = self.tau_prior()
         dx = np.dot(self.windows, cl_TT) - self.observation
-        lnl += np.dot(dx[2:2501], np.dot(self.inv_cov[2:2501,2:2501], dx[2:2501]))
+        lnl += np.dot(dx[2:self.ellmax + 1], np.dot(self.inv_cov[2:self.ellmax + 1,2:self.ellmax + 1], dx[2:self.ellmax + 1]))
 #	print lnl
 
         return lnl
@@ -167,7 +172,7 @@ class gauss_approx(SlikPlugin):
     def get_bestfit(self):
         x0 = self.cosmo_to_x()
         minresult = minimize(self.lnl, x0, method = 'Nelder-Mead')
-        self.best_fit = self.get_cmb(outputs=['cl_TT'], force = True, **self.cosmo)['cl_TT'][:2501]
+        self.best_fit = self.get_cmb(outputs=['cl_TT'], force = True, **self.cosmo)['cl_TT'][:self.ellmax + 1]
 
     def sample(self):
         covariance = inv(np.dot(self.deltaCl.T, np.dot(self.inv_cov, self.deltaCl)))

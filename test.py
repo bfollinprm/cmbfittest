@@ -61,12 +61,12 @@ fisher_lcdm.get_covariance()
 ##Instance a compression scheme
 print 'instancing compression scheme'
 S_N = fit.scheme.compression_scheme(
-                                    'fisher', 
+                                    'LDA', 
                                     dcldphi = primordial.dcldphi, 
                                     noise_cov = experiment.covariance, 
-                                    #supermodel_cov = primordial.covariance,
-                                    #kappa = 1000, 
-                                    #SM_cov = fisher_lcdm.covariance,
+                                    supermodel_cov = primordial.covariance,
+                                    kappa = 1000, 
+                                    SM_cov = fisher_lcdm.covariance,
                                     nummodes = 20
                                     )
 print '\t ...calculating modes'
@@ -74,8 +74,9 @@ S_N.get_compression_modes()
 
 
 plot(S_N.modes[:,:5])
+xlabel('multipole $l$', fontsize = 20)
+ylabel(r'$\delta C_l \left[ \mu {\rm K}^2\right]$', fontsize = 20)
 show()
-
 
 n = 30
 chisqlist = zeros(n)

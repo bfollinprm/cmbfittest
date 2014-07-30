@@ -17,6 +17,12 @@ class model(dict):
 			self.force_calculation = False
 
 
+		try:
+			self.ellmax
+		except:
+			self.ellmax = 2500
+
+
 	def get_dcldphi(self):
 		'''
 		Computes the linearized responses in C_l space from varying the parameters of the model, or grabs them from a 
@@ -27,7 +33,7 @@ class model(dict):
 
 		try:
 			fiducial_model = numpy.load(filename)
-			self.fiducial_cl = fiducial_model['cl_TT'][:2501]
+			self.fiducial_cl = fiducial_model['cl_TT'][:self.ellmax + 1]
 			self.fiducial_params = fiducial_model['params'].item()
 		except:
 			raise Exception('Critical Error: No fiducial model found, or fiducial model in incorrect format.  Need file %s to contain dictionary with keys cl_TT and params'%filename)

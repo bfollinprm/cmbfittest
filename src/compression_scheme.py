@@ -12,14 +12,19 @@ class compression_scheme(dict):
 		self.type = compression_type
 
 		try:
+			self.ellmax
+		except:
+			self.ellmax = 2500
+
+		try:
 			self.dcldphi
 		except:
-			self.dcldphi = np.identity(2501)
+			self.dcldphi = np.identity(self.ellmax + 1)
 
 		try:
 			self.noise_cov
 		except:
-			self.noise_cov = np.identity(2501)
+			self.noise_cov = np.identity(self.ellmax + 1)
 		try:
 			self.supermodel_cov
 		except:
@@ -28,7 +33,7 @@ class compression_scheme(dict):
 		try:
 			self.SM_cov
 		except:
-			self.SM_cov = np.identity(2501)
+			self.SM_cov = np.identity(self.ellmax + 1)
 
 		try:
 			self.kappa
@@ -40,12 +45,10 @@ class compression_scheme(dict):
 		except:
 			self.nummodes = 30
 
-
 	def get_compression_modes(self):
 		self.eigspectrum, self.modes = compute.get_modes(self)
 
 		self.modes = self.modes[:,:self.nummodes]
-
 
 	def save_modes(self):
 		root, extension =  osp.split(osp.dirname(osp.abspath(__file__)))
