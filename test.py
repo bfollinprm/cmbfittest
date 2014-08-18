@@ -73,10 +73,10 @@ print '\t ...calculating modes'
 S_N.get_compression_modes()
 
 
-plot(S_N.modes[:,:5])
-xlabel('multipole $l$', fontsize = 20)
-ylabel(r'$\delta C_l \left[ \mu {\rm K}^2\right]$', fontsize = 20)
-show()
+#plot(S_N.modes[:,:5])
+#xlabel('multipole $l$', fontsize = 20)
+#ylabel(r'$\delta C_l \left[ \mu {\rm K}^2\right]$', fontsize = 20)
+#show()
 
 n = 30
 chisqlist = zeros(n)
