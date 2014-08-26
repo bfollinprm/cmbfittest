@@ -105,15 +105,18 @@ def get_modes(test):
 				supermodel_cov[ystart:test.windows[j].shape[0] + ystart, xstart:test.windows[i].shape[0] + xstart] = dot(test.windows[i], dot(test.supermodel_cov,test.windows[j].T)).T
 
 		figure()
-		matshow(log(abs(SM_cov)))
+		matshow(log(abs(SM_cov[48:,48:])))
 		colorbar()
 		figure()
 		matshow(log(abs(supermodel_cov)))
 		colorbar()
 		show()
 		noise_cov = block_diag(*noise_cov)
+		print test.kappa
 		# 	#print experiment_test_matrices[-1].shape
-		test_matrix = np.dot(inv(noise_cov + test.kappa * SM_cov), supermodel_cov)
+		w, v = eigh(noise_cov + test.kappa * SM_cov)
+		denominator = dot(v, dot(diag(1/w), v.T))
+		test_matrix = np.dot(denominator, supermodel_cov)
 		# figure()
 		# matshow(log(abs(test_matrix[46:,46: ])))
 		# colorbar()

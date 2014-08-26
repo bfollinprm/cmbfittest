@@ -40,15 +40,16 @@ def max_statistic(cloud_amps, observed_amps):
 	for i in arange(1,numparams):
 		cloud_distances = array([distance_modulus(cloud_amps[:,:i], cloud_amps[j, :i]) for j in arange(numsamples)])
 		observed_distance = distance_modulus(cloud_amps[:,:i], observed_amps[:i])
-
+		newchi2 = (observed_distance - expectation)**2/sigma**2
 		expectation = mean(cloud_distances)
 		sigma = std(cloud_distances)
 		expected_chi2 = subtract(cloud_distances , expectation)**2/sigma**2
-		newscore = (chi2-mean(expected_chi2))/std(expected_chi2)
+		newscore = (newchi2-mean(expected_chi2))/std(expected_chi2)
 		if abs(newscore) > abs(zscore):
-			chi2 = (observed_distance - expectation)**2/sigma**2
+			max_location = i
+			chi2 = newchi2
 			zscore = newscore
-	return chi2, zscore
+	return chi2, max_location, zscore
 
 
 

@@ -192,6 +192,6 @@ class gauss_approx(SlikPlugin):
             deltaCl = np.dot(self.deltaCl.T, self.windows[i].T)
             inv_covariance += np.dot(deltaCl,np.dot(self.inv_cov[i], deltaCl.T))
         covariance = inv(inv_covariance)
-        sample = self.best_fit + np.dot(self.deltaCl, normal(np.zeros(6), covariance))
+        sample = np.dot(self.deltaCl, normal(np.zeros(6), covariance))
         return sample
 
